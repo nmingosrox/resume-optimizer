@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResumeMatch — AI Resume Optimizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #0f0f0f;
+      --paper: #f7f5f0;
+      --card: #ffffff;
+      --accent: #2a5cff;
+      --accent-light: #eef1ff;
+      --muted: #6b6b6b;
+      --border: #e2e0da;
+      --success: #1a7f5a;
+      --warn: #b85c00;
+      --danger: #c0392b;
+      --score-bg: #0f0f0f;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--ink);
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.4rem;
+      letter-spacing: -0.02em;
+    }
+    .logo span { color: var(--accent); }
+    .tagline {
+      font-size: 0.78rem;
+      color: #888;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    /* HERO */
+    .hero {
+      background: var(--ink);
+      color: #fff;
+      padding: 48px 32px 56px;
+      text-align: center;
+      border-bottom: 1px solid #222;
+    }
+    .hero h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .hero h1 em { color: var(--accent); font-style: italic; }
+    .hero p {
+      color: #aaa;
+      font-size: 1rem;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* MAIN */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* INPUT SECTION */
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 640px) { .input-grid { grid-template-columns: 1fr; } }
+
+    .field-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .field-label {
+      padding: 12px 16px 10px;
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      background: #fafaf8;
+    }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      padding: 14px 16px;
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--ink);
+      background: var(--card);
+      resize: vertical;
+      line-height: 1.6;
+    }
+    textarea::placeholder { color: #bbb; }
+
+    /* ANALYZE BUTTON */
+    .btn-analyze {
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-analyze:hover { background: #1a4ce0; }
+    .btn-analyze:active { transform: scale(0.99); }
+    .btn-analyze:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* LOADING */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 48px 0;
+      color: var(--muted);
+    }
+    .loading.active { display: block; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* RESULTS */
+    .results { display: none; margin-top: 36px; }
+    .results.active { display: block; }
+
+    /* SCORE CARD */
+    .score-card {
+      background: var(--score-bg);
+      color: #fff;
+      border-radius: 12px;
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 500px) { .score-card { flex-direction: column; text-align: center; } }
+    .score-ring {
+      flex-shrink: 0;
+      position: relative;
+      width: 96px; height: 96px;
+    }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring circle { transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1); }
+    .score-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 500;
+    }
+    .score-number small { font-size: 0.6rem; color: #888; margin-top: -4px; }
+    .score-text h2 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.5rem;
+      margin-bottom: 6px;
+    }
+    .score-text p { color: #aaa; font-size: 0.9rem; }
+
+    /* SECTION CARDS */
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #fafaf8;
+    }
+    .section-icon {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .icon-keyword { background: #eef1ff; }
+    .icon-missing { background: #fff3e8; }
+    .icon-rewrite { background: #eafaf3; }
+    .section-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .section-body { padding: 18px; }
+
+    /* KEYWORD CHIPS */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-family: 'DM Mono', monospace;
+    }
+    .chip-found { background: #eafaf3; color: var(--success); border: 1px solid #b6e8d4; }
+    .chip-missing { background: #fff3e8; color: var(--warn); border: 1px solid #f8d5a8; }
+
+    /* REWRITES */
+    .rewrite-item { margin-bottom: 16px; }
+    .rewrite-item:last-child { margin-bottom: 0; }
+    .rewrite-label {
+      font-size: 0.7rem;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .label-before { color: var(--danger); }
+    .label-after { color: var(--success); }
+    .rewrite-text {
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+    .text-before { background: #fdf2f2; border-left: 3px solid #e0a0a0; color: #555; }
+    .text-after { background: #f0faf6; border-left: 3px solid #7dd3b0; color: var(--ink); }
+    .rewrite-arrow { text-align: center; color: #ccc; font-size: 0.9rem; margin: 4px 0; }
+
+    /* TIPS */
+    .tip-list { list-style: none; }
+    .tip-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      display: flex;
+      gap: 10px;
+    }
+    .tip-list li:last-child { border-bottom: none; }
+    .tip-bullet { color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+    /* ERROR */
+    .error-msg {
+      background: #fdf2f2;
+      border: 1px solid #f0c0c0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      color: var(--danger);
+      font-size: 0.9rem;
+      display: none;
+      margin-top: 16px;
+    }
+    .error-msg.active { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Resume<span>Match</span></div>
+  <div class="tagline">AI-powered · Free to try</div>
+</header>
+
+<div class="hero">
+  <h1>Beat the <em>ATS filter.</em><br>Land more interviews.</h1>
+  <p>Paste your resume and a job description. Get a match score, missing keywords, and rewritten bullet points — in seconds.</p>
+</div>
+
+<main>
+  <div class="input-grid">
+    <div class="field-card">
+      <div class="field-label">📄 Your Resume</div>
+      <textarea id="resume" placeholder="Paste your resume text here…&#10;&#10;Include your work experience, skills, education, and any other relevant sections."></textarea>
+    </div>
+    <div class="field-card">
+      <div class="field-label">🎯 Job Description</div>
+      <textarea id="jobdesc" placeholder="Paste the full job description here…&#10;&#10;Include requirements, responsibilities, and any skills they mention."></textarea>
+    </div>
+  </div>
+
+  <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">
+    <span>Analyze My Resume</span>
+    <span>→</span>
+  </button>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Analyzing your resume against the job description…</p>
+  </div>
+
+  <div class="results" id="results">
+
+    <!-- SCORE -->
+    <div class="score-card">
+      <div class="score-ring">
+        <svg width="96" height="96" viewBox="0 0 96 96">
+          <circle cx="48" cy="48" r="40" fill="none" stroke="#2a2a2a" stroke-width="8"/>
+          <circle id="scoreCircle" cx="48" cy="48" r="40" fill="none" stroke="#2a5cff"
+            stroke-width="8" stroke-linecap="round"
+            stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+        </svg>
+        <div class="score-number">
+          <span id="scoreNum">0</span>
+          <small>/ 100</small>
+        </div>
+      </div>
+      <div class="score-text">
+        <h2 id="scoreLabel">Analyzing…</h2>
+        <p id="scoreSummary"></p>
+      </div>
+    </div>
+
+    <!-- KEYWORDS FOUND -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon icon-keyword">✅</div>
+        <div class="section-title">Keywords Found in Your Resume</div>
+      </div>
+      <div class="section-body">
+        <div class="chips" id="foundChips"></div>
+      </div>
+    </div>
+
+    <!-- KEYWORDS MISSING -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon icon-missing">⚠️</div>
+        <div class="section-title">Missing Keywords to Add</div>
+      </div>
+      <div class="section-body">
+        <div class="chips" id="missingChips"></div>
+      </div>
+    </div>
+
+    <!-- REWRITES -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon icon-rewrite">✍️</div>
+        <div class="section-title">Bullet Point Rewrites</div>
+      </div>
+      <div class="section-body" id="rewritesBody"></div>
+    </div>
+
+    <!-- TIPS -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon" style="background:#f5f0ff">💡</div>
+        <div class="section-title">Actionable Recommendations</div>
+      </div>
+      <div class="section-body">
+        <ul class="tip-list" id="tipsList"></ul>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+async function analyze() {
+  const resume = document.getElementById('resume').value.trim();
+  const jobdesc = document.getElementById('jobdesc').value.trim();
+  const errorMsg = document.getElementById('errorMsg');
+  const btn = document.getElementById('analyzeBtn');
+
+  errorMsg.classList.remove('active');
+
+  if (!resume || !jobdesc) {
+    errorMsg.textContent = 'Please paste both your resume and the job description before analyzing.';
+    errorMsg.classList.add('active');
+    return;
+  }
+
+  // Show loading
+  btn.disabled = true;
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('results').classList.remove('active');
+
+  const prompt = `You are an expert resume coach and ATS (Applicant Tracking System) specialist.
+
+Analyze the resume against the job description and respond ONLY with a valid JSON object. No markdown, no explanation, just the JSON.
+
+JSON structure:
+{
+  "score": <integer 0-100>,
+  "scoreLabel": <"Weak Match" | "Fair Match" | "Good Match" | "Strong Match">,
+  "scoreSummary": <one sentence explaining the score>,
+  "keywordsFound": [<list of up to 10 keywords/skills from the job description that appear in the resume>],
+  "keywordsMissing": [<list of up to 10 important keywords/skills from the job description NOT in the resume>],
+  "rewrites": [
+    {
+      "before": <original weak bullet from resume>,
+      "after": <rewritten stronger version with keywords and metrics>
+    }
+  ],
+  "tips": [<3-5 specific, actionable recommendations as strings>]
+}
+
+Provide 2-3 rewrites. Be specific and use real content from the resume/job description.
+
+RESUME:
+${resume}
+
+JOB DESCRIPTION:
+${jobdesc}`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+
+    renderResults(result);
+  } catch (err) {
+    errorMsg.textContent = 'Something went wrong while analyzing. Please try again.';
+    errorMsg.classList.add('active');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loading').classList.remove('active');
+  }
+}
+
+function renderResults(r) {
+  // Score ring
+  const score = Math.max(0, Math.min(100, r.score));
+  const circumference = 251.3;
+  const offset = circumference - (score / 100) * circumference;
+  const circle = document.getElementById('scoreCircle');
+  circle.style.strokeDashoffset = circumference;
+
+  // Color based on score
+  const color = score >= 75 ? '#1a7f5a' : score >= 50 ? '#2a5cff' : score >= 30 ? '#b85c00' : '#c0392b';
+  circle.style.stroke = color;
+
+  // Animate score number
+  document.getElementById('scoreNum').textContent = '0';
+  setTimeout(() => {
+    circle.style.strokeDashoffset = offset;
+    animateNumber('scoreNum', 0, score, 1000);
+  }, 100);
+
+  document.getElementById('scoreLabel').textContent = r.scoreLabel || 'Analysis Complete';
+  document.getElementById('scoreSummary').textContent = r.scoreSummary || '';
+
+  // Keywords found
+  const foundEl = document.getElementById('foundChips');
+  foundEl.innerHTML = (r.keywordsFound || []).map(k =>
+    `<span class="chip chip-found">${k}</span>`
+  ).join('') || '<span style="color:#aaa;font-size:.9rem">None found — add relevant skills from the job description.</span>';
+
+  // Keywords missing
+  const missingEl = document.getElementById('missingChips');
+  missingEl.innerHTML = (r.keywordsMissing || []).map(k =>
+    `<span class="chip chip-missing">${k}</span>`
+  ).join('') || '<span style="color:#1a7f5a;font-size:.9rem">Great — no critical keywords missing!</span>';
+
+  // Rewrites
+  const rewritesEl = document.getElementById('rewritesBody');
+  rewritesEl.innerHTML = (r.rewrites || []).map(rw => `
+    <div class="rewrite-item">
+      <div class="rewrite-label label-before">Before</div>
+      <div class="rewrite-text text-before">${rw.before}</div>
+      <div class="rewrite-arrow">↓</div>
+      <div class="rewrite-label label-after">After</div>
+      <div class="rewrite-text text-after">${rw.after}</div>
+    </div>
+  `).join('') || '<p style="color:#aaa;font-size:.9rem">No rewrites generated.</p>';
+
+  // Tips
+  const tipsEl = document.getElementById('tipsList');
+  tipsEl.innerHTML = (r.tips || []).map(tip => `
+    <li><span class="tip-bullet">→</span><span>${tip}</span></li>
+  `).join('');
+
+  document.getElementById('results').classList.add('active');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function animateNumber(id, from, to, duration) {
+  const el = document.getElementById(id);
+  const start = performance.now();
+  function update(now) {
+    const t = Math.min((now - start) / duration, 1);
+    el.textContent = Math.round(from + (to - from) * easeOut(t));
+    if (t < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+</script>
+</body>
+</html>
